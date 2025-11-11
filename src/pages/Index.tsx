@@ -1,4 +1,5 @@
 import { LoginForm } from "@/components/LoginForm";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { useToast } from "@/hooks/use-toast";
 import securityBackground from "@/assets/security-background.png";
 
@@ -24,6 +25,11 @@ const Index = () => {
     >
       {/* Overlay for better readability */}
       <div className="absolute inset-0 bg-gradient-to-br from-background/70 via-background/50 to-background/70 backdrop-blur-[2px]" />
+      
+      {/* Theme Toggle - Top Right */}
+      <div className="absolute top-6 right-6 z-20">
+        <ThemeToggle />
+      </div>
       
       {/* Login Form */}
       <div className="relative z-10 w-full max-w-md">
