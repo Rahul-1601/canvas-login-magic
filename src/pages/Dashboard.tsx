@@ -26,14 +26,32 @@ const Dashboard = () => {
     });
   };
 
-  useEffect(() => {
-    // Initialize pptx-preview when component mounts
+  const initializeViewer = () => {
     if (viewerRef.current && !pptxViewerRef.current) {
-      pptxViewerRef.current = init(viewerRef.current, {
-        width: viewerRef.current.clientWidth || 800,
-        height: viewerRef.current.clientHeight || 450,
-      });
+      try {
+        pptxViewerRef.current = init(viewerRef.current, {
+          width: 800,
+          height: 450,
+        });
+        console.log('PPT viewer initialized successfully');
+      } catch (error) {
+        console.error('Failed to initialize PPT viewer:', error);
+        toast({
+          title: 'Viewer initialization failed',
+          description: 'Please refresh the page and try again.',
+          variant: 'destructive',
+        });
+      }
     }
+  };
+
+  useEffect(() => {
+    // Initialize pptx-preview after a short delay to ensure DOM is ready
+    const timer = setTimeout(() => {
+      initializeViewer();
+    }, 100);
+    
+    return () => clearTimeout(timer);
   }, []);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -54,30 +72,37 @@ const Dashboard = () => {
     setUploadedFile(file);
 
     try {
-      // Read file as ArrayBuffer
-      const arrayBuffer = await file.arrayBuffer();
-
-      // Initialize viewer if not already done
-      if (viewerRef.current && !pptxViewerRef.current) {
-        pptxViewerRef.current = init(viewerRef.current, {
-          width: viewerRef.current.clientWidth || 800,
-          height: viewerRef.current.clientHeight || 450,
-        });
+      // Ensure viewer is initialized
+      if (!pptxViewerRef.current) {
+        initializeViewer();
       }
+
+      // Wait a moment for initialization
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      if (!pptxViewerRef.current) {
+        throw new Error('Viewer failed to initialize');
+      }
+
+      // Read file as ArrayBuffer
+      console.log('Reading file:', file.name);
+      const arrayBuffer = await file.arrayBuffer();
+      console.log('File read successfully, size:', arrayBuffer.byteLength);
 
       // Preview the PPTX file
-      if (pptxViewerRef.current) {
-        await pptxViewerRef.current.preview(arrayBuffer);
-        toast({
-          title: 'File loaded',
-          description: `${file.name} is ready to view`,
-        });
-      }
+      console.log('Starting preview...');
+      await pptxViewerRef.current.preview(arrayBuffer);
+      console.log('Preview completed successfully');
+      
+      toast({
+        title: 'File loaded',
+        description: `${file.name} is ready to view`,
+      });
     } catch (error) {
       console.error('Error loading PPTX:', error);
       toast({
         title: 'Error loading file',
-        description: 'Failed to load the PowerPoint file. Please try again.',
+        description: error instanceof Error ? error.message : 'Failed to load the PowerPoint file. Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -159,8 +184,8 @@ const Dashboard = () => {
                 ) : (
                   <div 
                     ref={viewerRef}
-                    className="w-full aspect-video bg-muted rounded-lg border-2 border-border overflow-hidden"
-                    style={{ minHeight: '450px' }}
+                    className="w-full bg-muted rounded-lg border-2 border-border overflow-hidden"
+                    style={{ width: '800px', height: '450px', maxWidth: '100%', margin: '0 auto' }}
                   />
                 )}
               </CardContent>
