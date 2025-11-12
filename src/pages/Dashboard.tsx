@@ -1,20 +1,21 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { Upload, ChevronLeft, ChevronRight, LogOut } from 'lucide-react';
+import { Upload, ChevronLeft, ChevronRight, LogOut, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
+import { init } from 'pptx-preview';
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  const [fileUrl, setFileUrl] = useState<string | null>(null);
-  const [currentSlide, setCurrentSlide] = useState(1);
-  const [totalSlides] = useState(10); // Mock total slides
+  const [isLoading, setIsLoading] = useState(false);
+  const viewerRef = useRef<HTMLDivElement>(null);
+  const pptxViewerRef = useRef<any>(null);
 
   const handleLogout = () => {
     logout();
@@ -25,38 +26,62 @@ const Dashboard = () => {
     });
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  useEffect(() => {
+    // Initialize pptx-preview when component mounts
+    if (viewerRef.current && !pptxViewerRef.current) {
+      pptxViewerRef.current = init(viewerRef.current, {
+        width: viewerRef.current.clientWidth || 800,
+        height: viewerRef.current.clientHeight || 450,
+      });
+    }
+  }, []);
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      if (file.type === 'application/vnd.ms-powerpoint' || 
-          file.type === 'application/vnd.openxmlformats-officedocument.presentationml.presentation') {
-        setUploadedFile(file);
-        const url = URL.createObjectURL(file);
-        setFileUrl(url);
-        setCurrentSlide(1);
-        toast({
-          title: 'File uploaded',
-          description: `${file.name} has been uploaded successfully`,
-        });
-      } else {
-        toast({
-          title: 'Invalid file type',
-          description: 'Please upload a PowerPoint file (.ppt or .pptx)',
-          variant: 'destructive',
+    if (!file) return;
+
+    if (file.type !== 'application/vnd.openxmlformats-officedocument.presentationml.presentation' &&
+        file.type !== 'application/vnd.ms-powerpoint') {
+      toast({
+        title: 'Invalid file type',
+        description: 'Please upload a PowerPoint file (.ppt or .pptx)',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    setUploadedFile(file);
+
+    try {
+      // Read file as ArrayBuffer
+      const arrayBuffer = await file.arrayBuffer();
+
+      // Initialize viewer if not already done
+      if (viewerRef.current && !pptxViewerRef.current) {
+        pptxViewerRef.current = init(viewerRef.current, {
+          width: viewerRef.current.clientWidth || 800,
+          height: viewerRef.current.clientHeight || 450,
         });
       }
-    }
-  };
 
-  const handlePrevious = () => {
-    if (currentSlide > 1) {
-      setCurrentSlide(currentSlide - 1);
-    }
-  };
-
-  const handleNext = () => {
-    if (currentSlide < totalSlides) {
-      setCurrentSlide(currentSlide + 1);
+      // Preview the PPTX file
+      if (pptxViewerRef.current) {
+        await pptxViewerRef.current.preview(arrayBuffer);
+        toast({
+          title: 'File loaded',
+          description: `${file.name} is ready to view`,
+        });
+      }
+    } catch (error) {
+      console.error('Error loading PPTX:', error);
+      toast({
+        title: 'Error loading file',
+        description: 'Failed to load the PowerPoint file. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -115,54 +140,29 @@ const Dashboard = () => {
           </Card>
 
           {/* Viewer Section */}
-          {uploadedFile && fileUrl && (
+          {uploadedFile && (
             <Card>
               <CardHeader>
                 <CardTitle>Presentation Viewer</CardTitle>
                 <CardDescription>
-                  Slide {currentSlide} of {totalSlides}
+                  {uploadedFile.name}
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {/* Presentation Display Area */}
+                {isLoading ? (
                   <div className="aspect-video bg-muted rounded-lg flex items-center justify-center border-2 border-border">
-                    <div className="text-center p-8">
-                      <p className="text-lg font-medium text-foreground mb-2">
-                        Slide {currentSlide}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        PowerPoint preview requires additional libraries
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-4">
-                        File: {uploadedFile.name}
-                      </p>
+                    <div className="text-center">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-2" />
+                      <p className="text-sm text-muted-foreground">Loading presentation...</p>
                     </div>
                   </div>
-
-                  {/* Navigation Controls */}
-                  <div className="flex items-center justify-center gap-4">
-                    <Button
-                      variant="outline"
-                      onClick={handlePrevious}
-                      disabled={currentSlide === 1}
-                    >
-                      <ChevronLeft className="h-4 w-4 mr-2" />
-                      Previous
-                    </Button>
-                    <span className="text-sm text-muted-foreground min-w-[100px] text-center">
-                      {currentSlide} / {totalSlides}
-                    </span>
-                    <Button
-                      variant="outline"
-                      onClick={handleNext}
-                      disabled={currentSlide === totalSlides}
-                    >
-                      Next
-                      <ChevronRight className="h-4 w-4 ml-2" />
-                    </Button>
-                  </div>
-                </div>
+                ) : (
+                  <div 
+                    ref={viewerRef}
+                    className="w-full aspect-video bg-muted rounded-lg border-2 border-border overflow-hidden"
+                    style={{ minHeight: '450px' }}
+                  />
+                )}
               </CardContent>
             </Card>
           )}

@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Lock, Mail, UserPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 
 interface LoginFormProps {
   onAddHelper: () => void;
@@ -127,6 +127,13 @@ export const LoginForm = ({ onAddHelper }: LoginFormProps) => {
           <UserPlus className="mr-2 h-5 w-5" />
           Add Helper
         </Button>
+
+        <div className="text-center text-sm pt-2">
+          <span className="text-muted-foreground">Don't have an account? </span>
+          <Link to="/signup" className="text-primary hover:underline font-medium">
+            Sign up
+          </Link>
+        </div>
       </CardContent>
     </Card>
   );

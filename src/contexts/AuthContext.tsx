@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 
 interface AuthContextType {
   isAuthenticated: boolean;
-  user: { email: string } | null;
+  user: { email: string; name?: string } | null;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
 }
@@ -11,7 +11,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState<{ email: string } | null>(null);
+  const [user, setUser] = useState<{ email: string; name?: string } | null>(null);
 
   useEffect(() => {
     const storedAuth = localStorage.getItem('auth');
@@ -36,8 +36,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return { success: false, error: 'Password must be at least 6 characters' };
     }
 
-    // Mock authentication (in production, this would be a real API call)
-    const authData = { user: { email } };
+    // Check if user exists in registered users
+    const registeredUsers = JSON.parse(localStorage.getItem('users') || '[]');
+    const user = registeredUsers.find(
+      (u: any) => u.email === email && u.password === password
+    );
+
+    if (!user) {
+      return { success: false, error: 'Invalid email or password' };
+    }
+
+    // Store auth session
+    const authData = { user: { email: user.email, name: user.name } };
     localStorage.setItem('auth', JSON.stringify(authData));
     setIsAuthenticated(true);
     setUser(authData.user);
