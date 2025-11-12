@@ -5,6 +5,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Lock, Mail, UserPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 interface LoginFormProps {
   onAddHelper: () => void;
@@ -13,24 +15,32 @@ interface LoginFormProps {
 export const LoginForm = ({ onAddHelper }: LoginFormProps) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { login } = useAuth();
+  const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!email || !password) {
+    setIsLoading(true);
+
+    const result = await login(email, password);
+
+    if (result.success) {
       toast({
-        title: "Error",
-        description: "Please fill in all fields",
+        title: "Login Successful",
+        description: "Welcome to the Cyber Essentials Portal",
+      });
+      navigate('/dashboard');
+    } else {
+      toast({
+        title: "Login Failed",
+        description: result.error || "Invalid credentials",
         variant: "destructive",
       });
-      return;
     }
 
-    toast({
-      title: "Login Successful",
-      description: "Welcome to Cyber Essentials Portal",
-    });
+    setIsLoading(false);
   };
 
   return (
@@ -93,8 +103,9 @@ export const LoginForm = ({ onAddHelper }: LoginFormProps) => {
           <Button 
             type="submit" 
             className="w-full h-12 text-base font-semibold bg-cyber-navy hover:bg-cyber-navy/90 text-primary-foreground"
+            disabled={isLoading}
           >
-            LOG IN
+            {isLoading ? "Logging in..." : "LOG IN"}
           </Button>
         </form>
 

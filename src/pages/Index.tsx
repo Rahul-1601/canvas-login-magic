@@ -1,10 +1,21 @@
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { LoginForm } from "@/components/LoginForm";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import securityBackground from "@/assets/security-background.png";
 
 const Index = () => {
   const { toast } = useToast();
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard');
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleAddHelper = () => {
     toast({
